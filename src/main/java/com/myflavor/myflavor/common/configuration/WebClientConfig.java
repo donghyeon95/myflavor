@@ -1,4 +1,4 @@
-package com.myflavor.myflavor.common;
+package com.myflavor.myflavor.common.configuration;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

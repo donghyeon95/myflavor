@@ -1,4 +1,4 @@
-package com.myflavor.myflavor.common.SecurityConfig.oauth;
+package com.myflavor.myflavor.common.configuration.SecurityConfig.oauth;
 
 import com.myflavor.myflavor.common.JWT.JwtProvider;
 import jakarta.servlet.http.Cookie;

@@ -1,4 +1,4 @@
-package com.myflavor.myflavor.common;
+package com.myflavor.myflavor.common.configuration;
 
 import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
 import org.springframework.context.annotation.Configuration;
