@@ -5,6 +5,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,6 +23,7 @@ public class RestaurantCategory {
 
 	@Column(unique = true)
 	String categoryName;
-	// @Version
-	// private Long version;
+
+	@Version
+	private Long version;
 }

@@ -5,11 +5,8 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.myflavor.myflavor.domain.account.model.model.User;
 import com.myflavor.myflavor.domain.account.model.repository.UserRepository;
-import com.myflavor.myflavor.domain.feed.controller.HeartController;
-import com.myflavor.myflavor.domain.feed.model.DTO.HeartCnt;
 import com.myflavor.myflavor.domain.feed.model.model.Heart;
 import com.myflavor.myflavor.domain.feed.model.model.MainFeed;
 import com.myflavor.myflavor.domain.feed.model.repository.CommentRepository;
@@ -43,7 +40,7 @@ public class HeartService {
 		MainFeed mainFeed = mainFeedRepository.findById(feedId).orElseThrow();
 		User user = userRepository.findByName(userName).orElseThrow();
 		// 2.1 좋아요를 했다면 return// 3.2  저장에 실패 하면 ERROR 처리
-		if (heartRepository.existByMainFeedAndUser(user, mainFeed))
+		if (heartRepository.existsByMainFeedAndUser(mainFeed, user))
 			return;
 
 		// 2.2 좋아요가 없다면 RDB (feed - heart - user) => heart에 저장
