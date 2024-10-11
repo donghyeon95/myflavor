@@ -1,6 +1,6 @@
 package com.myflavor.myflavor.common.configuration.SecurityConfig.oauth;
 
-import com.myflavor.myflavor.common.JWT.JwtProvider;
+import com.myflavor.myflavor.common.provider.JWT.JwtProvider;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -28,8 +28,8 @@ public class CustomOauth2Filter extends OncePerRequestFilter {
 	// 로그인이 되어있는 지 여부 확인???
 	@Override
 	protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain) throws
-			IOException,
-			ServletException {
+		IOException,
+		ServletException {
 		System.out.println("첫번째 Custom filter");
 		Collection<? extends GrantedAuthority> role = new ArrayList<>();
 

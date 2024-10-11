@@ -9,9 +9,9 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.myflavor.myflavor.domain.restaurant.DTO.RestaurantDTO;
-import com.myflavor.myflavor.domain.restaurant.model.Restaurant;
-import com.myflavor.myflavor.domain.restaurant.model.RestaurantCategory;
-import com.myflavor.myflavor.domain.restaurant.repository.RestaurantRepository;
+import com.myflavor.myflavor.domain.restaurant.model.entity.Restaurant;
+import com.myflavor.myflavor.domain.restaurant.model.entity.RestaurantCategory;
+import com.myflavor.myflavor.domain.restaurant.model.repository.RestaurantRepository;
 
 @Service
 public class InsertRDB {

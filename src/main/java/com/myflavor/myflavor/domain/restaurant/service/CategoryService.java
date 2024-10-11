@@ -4,8 +4,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.myflavor.myflavor.domain.restaurant.model.RestaurantCategory;
-import com.myflavor.myflavor.domain.restaurant.repository.RestaurantCategoryRepository;
+import com.myflavor.myflavor.domain.restaurant.model.entity.RestaurantCategory;
+import com.myflavor.myflavor.domain.restaurant.model.repository.RestaurantCategoryRepository;
 
 @Service
 public class CategoryService {
