@@ -23,8 +23,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.myflavor.myflavor.domain.restaurant.DTO.RestaurantDTO;
-import com.myflavor.myflavor.domain.restaurant.repository.RestaurantCategoryRepository;
-import com.myflavor.myflavor.domain.restaurant.repository.RestaurantRepository;
+import com.myflavor.myflavor.domain.restaurant.model.repository.RestaurantCategoryRepository;
+import com.myflavor.myflavor.domain.restaurant.model.repository.RestaurantRepository;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.mapping.TypeMapping;
