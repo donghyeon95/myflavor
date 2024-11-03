@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import com.myflavor.myflavor.domain.feed.DTO.db.MainFeedDTO;
 import com.myflavor.myflavor.domain.feed.model.entity.MainFeed;
+import com.myflavor.myflavor.domain.feed.model.entity.SubFeed;
 
 public interface MainFeedRepository extends JpaRepository<MainFeed, Long> {
 	@Query("SELECT new com.myflavor.myflavor.domain.feed.DTO.db.MainFeedDTO(mf.id, mf.createdAt, mf.updatedAt, mf.title, mf.feedPhoto, mf.visitMethod, mf.content, mf.restaurantId, mf.heartCnt, mf.subFeeds) FROM MainFeed mf JOIN mf.user u where u.name = :userName")
@@ -24,4 +25,10 @@ public interface MainFeedRepository extends JpaRepository<MainFeed, Long> {
 				"WHERE mf.id = :id")
 	Optional<MainFeed> findByIdToMainFeedDTO(long id);
 
+	@Query(
+		value = "SELECT m " +
+			"FROM MainFeed m " +
+			"WHERE :subFeed MEMBER OF m.subFeeds"
+	)
+	Optional<MainFeed> queryByMember(SubFeed subFeed);
 }
