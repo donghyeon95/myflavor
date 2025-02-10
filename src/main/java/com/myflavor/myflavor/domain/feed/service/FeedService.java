@@ -1,7 +1,6 @@
 package com.myflavor.myflavor.domain.feed.service;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -13,29 +12,30 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.myflavor.myflavor.common.snowflakeId.SnowFlakeIdProvider;
-import com.myflavor.myflavor.domain.account.model.model.User;
+import com.myflavor.myflavor.common.configuration.UID.snowflakeId.SnowFlakeIdProvider;
+import com.myflavor.myflavor.domain.account.model.entity.User;
 import com.myflavor.myflavor.domain.account.model.repository.UserRepository;
-import com.myflavor.myflavor.domain.feed.mapper.FeedMapper;
-import com.myflavor.myflavor.domain.feed.model.DTO.FeedDTO;
-import com.myflavor.myflavor.domain.feed.model.DTO.FeedHTTPVO;
-import com.myflavor.myflavor.domain.feed.model.DTO.MainFeedDTO;
-import com.myflavor.myflavor.domain.feed.model.model.FeedConfigration;
-import com.myflavor.myflavor.domain.feed.model.model.MainFeed;
-import com.myflavor.myflavor.domain.feed.model.model.SubFeed;
-import com.myflavor.myflavor.domain.feed.model.repository.CommentRepository;
+import com.myflavor.myflavor.domain.comment.model.repository.CommentRepository;
+import com.myflavor.myflavor.domain.feed.DTO.db.FeedDTO;
+import com.myflavor.myflavor.domain.feed.DTO.db.MainFeedDTO;
+import com.myflavor.myflavor.domain.feed.DTO.mapper.FeedMapper;
+import com.myflavor.myflavor.domain.feed.DTO.mapper.FeedResponseMapper;
+import com.myflavor.myflavor.domain.feed.DTO.request.FeedResquestDTO;
+import com.myflavor.myflavor.domain.feed.DTO.response.CustomPageResponse;
+import com.myflavor.myflavor.domain.feed.DTO.response.FeedResponseDTO;
+import com.myflavor.myflavor.domain.feed.DTO.response.MainFeedResponseDTO;
+import com.myflavor.myflavor.domain.feed.model.entity.FeedConfigration;
+import com.myflavor.myflavor.domain.feed.model.entity.MainFeed;
+import com.myflavor.myflavor.domain.feed.model.entity.SubFeed;
 import com.myflavor.myflavor.domain.feed.model.repository.FeedConfigurationRepository;
-import com.myflavor.myflavor.domain.feed.model.repository.HeartRepository;
 import com.myflavor.myflavor.domain.feed.model.repository.MainFeedRepository;
 import com.myflavor.myflavor.domain.feed.model.repository.SubFeedRepository;
-import com.sun.tools.javac.Main;
-
-import ch.qos.logback.classic.spi.IThrowableProxy;
+import com.myflavor.myflavor.domain.heart.model.repository.HeartRepository;
+import com.myflavor.myflavor.domain.picture.service.PictureService;
 
 @Service
 public class FeedService implements MessageListener {
@@ -57,9 +57,10 @@ public class FeedService implements MessageListener {
 	private UserRepository userRepository;
 
 	public FeedService(MainFeedRepository mainFeedRepository, SubFeedRepository subFeedRepository,
-			CommentRepository commentRepository,
-			FeedConfigurationRepository feedConfigurationRepository, HeartRepository heartRepository,
-			RedisTemplate<String, Object> redisTemplate, SnowFlakeIdProvider snowFlakeIdProvider, ObjectMapper objectMapper) {
+		CommentRepository commentRepository,
+		FeedConfigurationRepository feedConfigurationRepository, HeartRepository heartRepository,
+		RedisTemplate<String, Object> redisTemplate, SnowFlakeIdProvider snowFlakeIdProvider,
+		ObjectMapper objectMapper) {
 		this.mainFeedRepository = mainFeedRepository;
 		this.subFeedRepository = subFeedRepository;
 		this.commentRepository = commentRepository;
@@ -72,7 +73,7 @@ public class FeedService implements MessageListener {
 
 	// FIXME  userNmae이 아니라 userVO나 User 객체를 받도록 수정.
 	@Transactional
-	public void insertUpdateFeed(long feedId, String userName, FeedHTTPVO feedHTTPVO) {
+	public void insertUpdateFeed(long feedId, String userName, FeedResquestDTO feedHTTPVO) {
 		// DB Insert 혹은 Update
 
 		// DB 업데이트가 성공하면 redis temp 삭제
@@ -99,31 +100,33 @@ public class FeedService implements MessageListener {
 		deleteTempRedis(key);
 	}
 
-	public FeedHTTPVO getFeed(long feedId, String userName) {
+	public FeedResponseDTO getFeed(long feedId, String userName) {
 		// feedId, userName
 		// AUTH가 필요
-		MainFeed mainfeed = mainFeedRepository.findById(feedId).orElseThrow();
-
-		System.out.println(mainfeed);
-
-		// mapper 사용해서 FeedHTTPVO mapping 해줘야 함.
-		return null;
+		return mainFeedRepository.findByIdToMainFeedDTO(feedId)
+			.map(MainFeedDTO::new)
+			.map(FeedResponseDTO::new)
+			.orElseThrow();
 	}
 
-	public Page<MainFeedDTO> getFeedList(String userName, Pageable pageable) {
+	public CustomPageResponse<MainFeedResponseDTO> getFeedList(String userName, Pageable pageable) {
 		// AUTH 검증이 필요
 
 		// MainFeed에서 특정 데이터만 가져올거임.
+		// TODO 이걸 연관된 Feed 추천 알고리즘으로 변경
 		Page<MainFeedDTO> mainFeed = mainFeedRepository.findByUserName(userName, pageable);
+		List<MainFeedResponseDTO> mainFeedResponseDTO = mainFeed.stream()
+			.filter(Objects::nonNull)
+			.map(new FeedResponseMapper()::ToMainFeedResponseDTO).toList();
 
-		return mainFeed;
+		return new CustomPageResponse<>(mainFeedResponseDTO, pageable, mainFeed.getTotalElements());
 	}
 
 	public long generateId() {
 		return snowFlakeIdProvider.nextId();
 	}
 
-	public void insertTempFeed(long feedId, FeedHTTPVO feedHTTPVO, String userName) {
+	public void insertTempFeed(long feedId, FeedResquestDTO feedHTTPVO, String userName) {
 		// redis에 임시 파일을 저장
 
 		/* 1. redis 임시 파일 저장
@@ -150,9 +153,9 @@ public class FeedService implements MessageListener {
 		return redisTemplate.opsForSet().members(redisKey);
 	}
 
-	public FeedHTTPVO getTempFeed(long feedId, String userName) {
+	public FeedResquestDTO getTempFeed(long feedId, String userName) {
 		Object feedObject = redisTemplate.opsForValue().get(this.FEED_KEY_PREFIX + feedId);
-		FeedHTTPVO feed = new ObjectMapper().convertValue(feedObject, FeedHTTPVO.class);
+		FeedResquestDTO feed = new ObjectMapper().convertValue(feedObject, FeedResquestDTO.class);
 
 		System.out.println(feed);
 		// 권한 확인
@@ -178,7 +181,7 @@ public class FeedService implements MessageListener {
 
 	private void handleFeedExpiration(String key) throws IOException, IllegalAccessException {
 		String backupKey = this.FEED_BACKUP_KEY_PREFIX + key;
-		FeedHTTPVO feedData = (FeedHTTPVO)redisTemplate.opsForValue().get(backupKey);
+		FeedResquestDTO feedData = (FeedResquestDTO)redisTemplate.opsForValue().get(backupKey);
 
 		System.out.println(feedData);
 		if (feedData == null)
@@ -219,7 +222,7 @@ public class FeedService implements MessageListener {
 
 	public void deleteTempRedis(String key) {
 		String backupKey = this.FEED_BACKUP_KEY_PREFIX + key;
-		FeedHTTPVO feedData = (FeedHTTPVO)redisTemplate.opsForValue().get(backupKey);
+		FeedResquestDTO feedData = (FeedResquestDTO)redisTemplate.opsForValue().get(backupKey);
 
 		System.out.println(feedData);
 		String userName = null;

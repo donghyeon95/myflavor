@@ -10,10 +10,9 @@ import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 
 import com.myflavor.myflavor.domain.restaurant.DTO.RestaurantELKDTO;
-import com.myflavor.myflavor.domain.restaurant.model.Restaurant;
-import com.myflavor.myflavor.domain.restaurant.model.RestaurantName;
-import com.myflavor.myflavor.domain.restaurant.repository.RestaurantNameRepository;
-import com.myflavor.myflavor.domain.restaurant.repository.RestaurantRepository;
+import com.myflavor.myflavor.domain.restaurant.model.entity.RestaurantName;
+import com.myflavor.myflavor.domain.restaurant.model.repository.RestaurantNameRepository;
+import com.myflavor.myflavor.domain.restaurant.model.repository.RestaurantRepository;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -37,33 +36,33 @@ public class SearchService {
 	private final String fieldName = "location";
 
 	public List<RestaurantELKDTO> boundarySearch(double boundaryKMeter, double latitude, double longitude) throws
-			IOException {
+		IOException {
 		SearchResponse<RestaurantELKDTO> searchResponse = esClient.search(s -> s
-				.index(restaurantIndexName)
-				.size(1000)
-				.scroll(Time.of(t -> t.time("2m")))
-				.sort(so -> so
-						.geoDistance(g -> g
-								.field(fieldName)
-								.order(SortOrder.Asc)
-								.unit(DistanceUnit.Kilometers)
-								.location(l -> l.latlon(v -> v
-										.lat(latitude)
-										.lon(longitude)
-								))
-						)
+			.index(restaurantIndexName)
+			.size(1000)
+			.scroll(Time.of(t -> t.time("2m")))
+			.sort(so -> so
+				.geoDistance(g -> g
+					.field(fieldName)
+					.order(SortOrder.Asc)
+					.unit(DistanceUnit.Kilometers)
+					.location(l -> l.latlon(v -> v
+						.lat(latitude)
+						.lon(longitude)
+					))
 				)
-				.query(q -> q
-						.geoDistance(d -> d
-								.field(fieldName)
-								.distance(boundaryKMeter + "km")
-								.location(l -> l
-										.latlon(v -> v
-												.lat(latitude)
-												.lon(longitude)
-										)
-								)
-						)), RestaurantELKDTO.class);
+			)
+			.query(q -> q
+				.geoDistance(d -> d
+					.field(fieldName)
+					.distance(boundaryKMeter + "km")
+					.location(l -> l
+						.latlon(v -> v
+							.lat(latitude)
+							.lon(longitude)
+						)
+					)
+				)), RestaurantELKDTO.class);
 
 		System.out.println("total: " + searchResponse.hits().total());
 
@@ -76,8 +75,8 @@ public class SearchService {
 		while (true) {
 			String finalScrollId = scrollId;
 			ScrollRequest scrollRequest = ScrollRequest.of(s -> s
-					.scrollId(finalScrollId)
-					.scroll(Time.of(t -> t.time("2m")))
+				.scrollId(finalScrollId)
+				.scroll(Time.of(t -> t.time("2m")))
 			);
 			ScrollResponse<RestaurantELKDTO> scrollResponse = esClient.scroll(scrollRequest, RestaurantELKDTO.class);
 

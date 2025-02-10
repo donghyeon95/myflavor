@@ -1,15 +1,19 @@
 package com.myflavor.myflavor.domain.restaurant.controller;
 
-import com.myflavor.myflavor.domain.restaurant.DTO.RestaurantELKDTO;
-import com.myflavor.myflavor.domain.restaurant.model.RestaurantName;
-import com.myflavor.myflavor.domain.restaurant.service.RestautantGetter;
-import com.myflavor.myflavor.domain.restaurant.service.SearchService;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-
 import java.io.IOException;
 import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.myflavor.myflavor.domain.restaurant.DTO.RestaurantELKDTO;
+import com.myflavor.myflavor.domain.restaurant.model.entity.RestaurantName;
+import com.myflavor.myflavor.domain.restaurant.service.RestautantGetter;
+import com.myflavor.myflavor.domain.restaurant.service.SearchService;
 
 @RestController()
 @RequestMapping(value = "/openapi", produces = "application/json")
@@ -22,7 +26,7 @@ public class GetDataController {
 
 	@GetMapping("/search/map")
 	public List<RestaurantELKDTO> getMapData(@RequestParam("lo") Double longitude, @RequestParam("la") Double latitude,
-			@RequestParam("b") Double boundarySize) throws IOException {
+		@RequestParam("b") Double boundarySize) throws IOException {
 		return searchService.boundarySearch(boundarySize, latitude, longitude);
 	}
 
