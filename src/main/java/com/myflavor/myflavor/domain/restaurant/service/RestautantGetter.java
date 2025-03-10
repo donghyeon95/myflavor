@@ -104,8 +104,8 @@ public class RestautantGetter {
 					List<RestaurantDTO> restaurantList = getSeoulData(finalI, finalI1 + 999);
 					restaurantDTOList.addAll(restaurantList);
 					for (RestaurantDTO restaurant : restaurantList) {
-						// UpdateResponse<RestaurantDTO> response = insertRestaurantELK(restaurant,
-						// 	todayRestaurantIndexName);
+						UpdateResponse<RestaurantDTO> response = insertRestaurantELK(restaurant,
+							todayRestaurantIndexName);
 						// System.out.println(Thread.currentThread().getName() + " " + restaurant);
 						int retryCnt = 0;
 
