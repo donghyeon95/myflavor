@@ -1,5 +1,7 @@
 package com.myflavor.myflavor.common.configuration.UID.snowflakeId;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 public class SnowFlakeIdProvider {
 	private final long twepoch = 1288834974657L; // 트위치 채번시간 ( 에포크 시간 오버플로 때문에 )
 	private final long workerIdBits = 5L;
@@ -14,7 +16,7 @@ public class SnowFlakeIdProvider {
 
 	private long workerId;
 	private long datacenterId;
-	private long sequence = 0L;
+	private AtomicLong sequence = new AtomicLong(0L);
 	private long lastTimestamp = -1L;
 
 	public SnowFlakeIdProvider(long workerId, long datacenterId) {
@@ -34,13 +36,14 @@ public class SnowFlakeIdProvider {
 		long timestamp = timeGen();
 
 		if (lastTimestamp == timestamp) {
-			sequence = (sequence + 1) & sequenceMask;
+			long currentSequence = sequence.incrementAndGet() & sequenceMask;
+			sequence.set(currentSequence);
 
-			if (sequence == 0) {
+			if (currentSequence == 0) {
 				timestamp = tilNextMillis(lastTimestamp);
 			}
 		} else {
-			sequence = 0L;
+			sequence.set(0L);
 		}
 
 		lastTimestamp = timestamp;
@@ -48,7 +51,8 @@ public class SnowFlakeIdProvider {
 		return ((timestamp - twepoch) << timestampLeftShift) |
 			(datacenterId << datacenterIdShift) |
 			(workerId << workerIdShift) |
-			sequence;
+			sequence.get();
+
 	}
 
 	protected long tilNextMillis(long lastTimestamp) {
