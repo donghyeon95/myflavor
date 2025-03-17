@@ -35,7 +35,7 @@ public class InsertRDB {
 		}
 
 		Restaurant restaurant = convertDataService.convertRestaurant(restaurantDTO);
-		restaurant.setRestaurantCategoryId(category);
+		restaurant.setRestaurantCategory(category);
 
 		return restaurantRepository.saveAndFlush(restaurant);
 	}

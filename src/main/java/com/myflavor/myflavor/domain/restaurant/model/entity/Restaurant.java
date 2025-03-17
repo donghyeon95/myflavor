@@ -34,8 +34,8 @@ public class Restaurant {
 	private String status;
 
 	@ManyToOne(cascade = CascadeType.PERSIST)
-	@JoinColumn(name = "restaurant_category_id")
-	private RestaurantCategory restaurantCategoryId;
+	@JoinColumn(name = "restaurant_category_id", unique = false)
+	private RestaurantCategory restaurantCategory;
 
 	// @Version
 	// private Long version;

@@ -4,13 +4,15 @@ import java.time.LocalDateTime;
 
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -23,7 +25,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-
+@EntityListeners(AuditingEntityListener.class)
 public class SubFeed {
 	@Id
 	@GeneratedValue(strategy = GenerationType.AUTO)
@@ -42,6 +44,7 @@ public class SubFeed {
 	private String content;
 
 	// FIXME 이런식으로 Join을 걸어 주는 것이 맞냐? 아니면 그냥 Id 값을 가지고 있는 것이 맞냐?
-	@ManyToOne(cascade = CascadeType.PERSIST)
-	private MainFeed mainFeedId;
+	@ManyToOne
+	@JoinColumn(name = "main_feed_id", nullable = false) // FK 컬럼 지정
+	private MainFeed mainFeed;
 }

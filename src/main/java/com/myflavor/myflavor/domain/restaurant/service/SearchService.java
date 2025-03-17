@@ -1,5 +1,17 @@
 package com.myflavor.myflavor.domain.restaurant.service;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.myflavor.myflavor.domain.restaurant.DTO.RestaurantELKDTO;
+import com.myflavor.myflavor.domain.restaurant.model.entity.RestaurantName;
+import com.myflavor.myflavor.domain.restaurant.model.repository.RestaurantNameRepository;
+import com.myflavor.myflavor.domain.restaurant.model.repository.RestaurantRepository;
+
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.DistanceUnit;
 import co.elastic.clients.elasticsearch._types.SortOrder;
@@ -8,18 +20,6 @@ import co.elastic.clients.elasticsearch.core.ScrollRequest;
 import co.elastic.clients.elasticsearch.core.ScrollResponse;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
-
-import com.myflavor.myflavor.domain.restaurant.DTO.RestaurantELKDTO;
-import com.myflavor.myflavor.domain.restaurant.model.entity.RestaurantName;
-import com.myflavor.myflavor.domain.restaurant.model.repository.RestaurantNameRepository;
-import com.myflavor.myflavor.domain.restaurant.model.repository.RestaurantRepository;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 @Service
 public class SearchService {
@@ -92,6 +92,9 @@ public class SearchService {
 	}
 
 	public List<RestaurantName> nameSearch(String name) {
+		// TODO 검색어 저장
+		// Redis 최근 검색 => (자주 검색하는 카테고리, 자주 검색하는 위치 등을 기록)
+		// 검색 기록 저장
 		return restaurantNameRepository.findByNameNative(name);
 	}
 }
