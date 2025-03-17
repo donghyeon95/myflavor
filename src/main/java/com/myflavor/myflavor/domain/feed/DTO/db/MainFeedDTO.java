@@ -25,10 +25,10 @@ public class MainFeedDTO {
 	private String feedPhoto;
 	private VisitMethod visitMethod;
 	private String content;
-	private Long restaurantId;
+	private long restaurantId;
 	private Integer heartCnt;
-	private User user;
 	private List<FeedConfigration> configration;
+	private User user;
 	private List<SubFeedDTO> subFeeds;
 
 	// TODO 요 부분에서 collection fetch Join 더 자연 스럽게 ....
@@ -40,7 +40,7 @@ public class MainFeedDTO {
 		this.feedPhoto = mainFeed.getFeedPhoto();
 		this.visitMethod = mainFeed.getVisitMethod();
 		this.content = mainFeed.getContent();
-		this.restaurantId = mainFeed.getRestaurantId();
+		this.restaurantId = mainFeed.getRestaurant().getPk();
 		this.heartCnt = mainFeed.getHeartCnt();
 		this.configration = mainFeed.getConfigurations();
 		this.user = mainFeed.getUser();
@@ -50,4 +50,5 @@ public class MainFeedDTO {
 			.map(SubFeedDTO::new)
 			.toList();
 	}
+
 }

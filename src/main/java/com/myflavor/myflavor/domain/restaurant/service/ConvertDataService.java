@@ -41,7 +41,7 @@ public class ConvertDataService {
 			.tel(restaurantDTO.getTel())
 			.restaurantName(restaurantDTO.getName())
 			.status(restaurantDTO.getStatus())
-			.restaurantCategoryId(category)
+			.restaurantCategory(category)
 			.managementNumber(restaurantDTO.getManagementNumber())
 			.build();
 	}

@@ -32,7 +32,7 @@ public class FeedConfigration {
 	private String settingValue;
 
 	@ManyToOne
-	private MainFeed mainFeedId;
+	private MainFeed mainFeed;
 
 	// public void setSettingValue(String settingValue) {
 	// 	if (!settingkey.isValidValue(settingValue)) {

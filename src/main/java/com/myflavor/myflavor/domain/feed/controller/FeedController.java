@@ -1,5 +1,6 @@
 package com.myflavor.myflavor.domain.feed.controller;
 
+import java.io.IOException;
 import java.util.Set;
 
 import org.springframework.data.domain.PageRequest;
@@ -60,7 +61,7 @@ public class FeedController {
 
 	@PostMapping
 	public ResponseEntity<?> postFeed(@RequestParam(value = "id") long feedId, @RequestBody FeedResquestDTO feedHTTPVO,
-		HttpServletRequest request, HttpServletResponse response) {
+		HttpServletRequest request, HttpServletResponse response) throws IOException, IllegalAccessException {
 		// TODO postHTTPDTO를 분리하기 위해서 VO를 새로이 만든다.
 
 		String userName = jwtProvider.getUserNameFromRequest(request);

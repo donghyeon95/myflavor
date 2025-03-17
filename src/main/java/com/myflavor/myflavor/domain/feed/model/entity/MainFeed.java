@@ -2,6 +2,7 @@ package com.myflavor.myflavor.domain.feed.model.entity;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 
 import org.hibernate.annotations.ColumnDefault;
 import org.springframework.data.annotation.CreatedDate;
@@ -12,6 +13,7 @@ import com.myflavor.myflavor.domain.account.model.entity.User;
 import com.myflavor.myflavor.domain.comment.model.entity.Comment;
 import com.myflavor.myflavor.domain.feed.DTO.service.VisitMethod;
 import com.myflavor.myflavor.domain.heart.model.entity.Heart;
+import com.myflavor.myflavor.domain.restaurant.model.entity.Restaurant;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -62,30 +64,43 @@ public class MainFeed {
 	@Valid
 	private String content;
 
-	private Long restaurantId;
-
 	@ColumnDefault("0")
 	@Builder.Default
 	private Integer heartCnt = 0;
 
-	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	@OneToMany(mappedBy = "mainFeed", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<Heart> haerts;
 
-	// // TODO CASCADE 조건 확인.
-	@OneToMany(cascade = CascadeType.ALL)
-	@JoinColumn(name = "main_feed_id", referencedColumnName = "id")
+	@ManyToOne
+	@JoinColumn(unique = false)
+	private Restaurant restaurant;
+
+	//
+	@OneToMany(mappedBy = "mainFeed", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<FeedConfigration> configurations;
 
-	@ManyToOne(cascade = CascadeType.REMOVE, fetch = FetchType.LAZY)
+	@ManyToOne(fetch = FetchType.LAZY)
 	@ToString.Exclude
 	private User user;
 
-	@OneToMany(cascade = CascadeType.ALL)
-	@JoinColumn(name = "main_feed_id", referencedColumnName = "id")
+	@OneToMany(mappedBy = "mainFeed", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<SubFeed> subFeeds;
 
-	@OneToMany
-	@JoinColumn(name = "main_feed_id", referencedColumnName = "id")
+	@OneToMany(mappedBy = "mainFeed", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<Comment> comments;
 
+	@Override
+	public boolean equals(Object o) {
+		if (this == o)
+			return true;
+		if (o == null || getClass() != o.getClass())
+			return false;
+		MainFeed mainFeed = (MainFeed)o;
+		return Objects.equals(id, mainFeed.id);  // 'id'가 같으면 같은 객체로 취급
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(id);  // 'id'를 기준으로 해시코드 생성
+	}
 }

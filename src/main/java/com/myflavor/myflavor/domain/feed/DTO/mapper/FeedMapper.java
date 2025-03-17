@@ -48,7 +48,14 @@ public class FeedMapper {
 			.configurations(feedConfigrationMapper(feedSetting))
 			.user(user)
 			.subFeeds(subFeeds)
+			.haerts(new ArrayList<>())
+			.comments(new ArrayList<>())
+			.configurations(new ArrayList<>())
 			.build();
+
+		for (SubFeed subFeed : subFeeds) {
+			subFeed.setMainFeed(mainFeed);
+		}
 
 		return new FeedEntities(mainFeed, subFeeds);
 	}
