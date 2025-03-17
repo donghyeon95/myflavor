@@ -132,7 +132,7 @@ public class PictureService implements MessageListener {
 
 		} catch (NoSuchFileException e) {
 			System.err.println("No such file/directory exists: " + path);
-			throw new NoSuchFileException("No such file/directory exists: " + path);
+			// throw new NoSuchFileException("No such file/directory exists: " + path);
 		} catch (IOException e) {
 			System.err.println("Unable to delete file: " + path);
 			throw new IOException("Unable to delete file: " + path, e);
