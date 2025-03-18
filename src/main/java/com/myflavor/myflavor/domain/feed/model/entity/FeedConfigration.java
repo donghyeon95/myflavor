@@ -1,5 +1,6 @@
 package com.myflavor.myflavor.domain.feed.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.myflavor.myflavor.domain.feed.DTO.service.SettingKey;
 import com.myflavor.myflavor.domain.feed.model.entity.listener.FeedConfigurationListener;
 
@@ -32,6 +33,7 @@ public class FeedConfigration {
 	private String settingValue;
 
 	@ManyToOne
+	@JsonIgnore
 	private MainFeed mainFeed;
 
 	// public void setSettingValue(String settingValue) {

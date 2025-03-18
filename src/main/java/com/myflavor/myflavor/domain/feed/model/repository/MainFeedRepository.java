@@ -66,10 +66,12 @@ public interface MainFeedRepository extends JpaRepository<MainFeed, Long> {
 	/**
 	 * 특정 유저를 기준으로 그들이 쓴 최신 글 쿼리
 	 * */
-	List<MainFeed> findByUser_NameInOrderByCreatedAtDesc(List<String> userNames);
+	List<MainFeed> findByUser_NameInAndCreatedAtAfterOrderByCreatedAtDesc(List<String> userNames,
+		LocalDateTime createdAfter);
 
 	/**
 	 * 특정 카테고를 기준으로 최신 글 쿼리
 	 * */
-	List<MainFeed> findByRestaurant_RestaurantCategory_CategoryNameInOrderByCreatedAtDesc(List<String> categories);
+	List<MainFeed> findByRestaurant_RestaurantCategory_CategoryNameInAndCreatedAtAfterOrderByCreatedAtDesc(
+		List<String> categories, LocalDateTime createdAfter);
 }

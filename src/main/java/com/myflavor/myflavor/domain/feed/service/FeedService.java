@@ -3,19 +3,23 @@ package com.myflavor.myflavor.domain.feed.service;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
+import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ScanOptions;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +55,8 @@ public class FeedService implements MessageListener {
 	private final String FEED_BACKUP_KEY_PREFIX = "backupFeed:";
 	private final String USER_FEED_KEY_PREFIX = "user:";
 	private final String USER_FEED_VIEW_LOG = "user:feed_view:";
+	private final String RECOMMEND_FEED_CACHE_SCORE = "user:feed_cache_score:";
+	private final String RECOMMEND_FEED_CACHE = "user:feed_cache:";
 	private MainFeedRepository mainFeedRepository;
 	private SubFeedRepository subFeedRepository;
 	private CommentRepository commentRepository;
@@ -191,13 +197,28 @@ public class FeedService implements MessageListener {
 		// TODO 이걸 연관된 Feed 추천 알고리즘으로 변경
 		// 최근 1시간 이내 써진 글 => 없으면 1시간 씩 추가
 
-		long pageOffset = pageable.getOffset();
-		long pageSize = pageable.getPageSize();
-
 		/** Cache update
 		 *  cache miss 일 경우 => 기본 로직 (1주일 이후)
 		 *  cache hit 일 경우 => 캐시 시간 이후
 		 * */
+
+		// scan을 활용하여 => 최근 시간 확인
+		String offsetKey = RECOMMEND_FEED_CACHE_SCORE + userName;
+		Cursor<ZSetOperations.TypedTuple<Object>> cursor = redisTemplate.opsForZSet()
+			.scan(offsetKey, ScanOptions.scanOptions().match("*").count(1000).build());
+
+		LocalDateTime latestFeedTime = StreamSupport.stream(cursor.spliterator(), false)
+			.map(ZSetOperations.TypedTuple::getValue)
+			.map(key -> {
+				String dateTimeStr = String.valueOf(key).split("_")[1]; // "2025-03-14T22:39:58.671588"
+				return LocalDateTime.parse(dateTimeStr); // String -> LocalDateTime 변환
+			})
+			.map(time -> time.toEpochSecond(ZoneOffset.UTC))
+			.max(Long::compareTo)
+			.map(epoch -> LocalDateTime.ofEpochSecond(epoch, 0, ZoneOffset.UTC))
+			.orElse(LocalDateTime.now().minusDays(7));
+
+		// FIXME 만약에 시간이 1분 아래라면 db 안가도 될듯.
 
 		// 후보군 1000개
 		// FIXME 이걸 매번 쿼리를 하는 것이 아닌 일정 스코어까지는 사용
@@ -207,8 +228,7 @@ public class FeedService implements MessageListener {
 		// TODO 비동기 => 코루틴()
 		// In-Network (900)개
 		// 내가 팔로우한 사람 기준으로 => 인기글 && 최신 (300개)
-		List<MainFeed> followerFeeds = mainFeedRepository.queryByUserFollower(userName,
-			LocalDateTime.now().minusDays(8));
+		List<MainFeed> followerFeeds = mainFeedRepository.queryByUserFollower(userName, latestFeedTime);
 		candidates.addAll(followerFeeds);
 
 		// 내가 자주 본 사람 (상세를 본 기준) -> 최근에 자주 본 카테고리 10개 && 전체 인기글 && 최신 (300개)
@@ -217,8 +237,8 @@ public class FeedService implements MessageListener {
 				frequentPersonkey, 0, 9))
 			.stream().map(String::valueOf).collect(
 				Collectors.toList());
-		List<MainFeed> frequentPersionFeeds = mainFeedRepository.findByUser_NameInOrderByCreatedAtDesc(
-			frequentViewPersons);
+		List<MainFeed> frequentPersionFeeds = mainFeedRepository.findByUser_NameInAndCreatedAtAfterOrderByCreatedAtDesc(
+			frequentViewPersons, latestFeedTime);
 		candidates.addAll(frequentPersionFeeds);
 
 		// 내가 자주 본 글 (상세 보기 기준) => 그 글의 가게 카테고리랑 10개 && 인기글 && 최신 (300개)
@@ -227,8 +247,8 @@ public class FeedService implements MessageListener {
 		List<String> frequentCategories = Objects.requireNonNull(
 				redisTemplate.opsForZSet().reverseRange(frequentCategoryKey, 0, 9))
 			.stream().map(String::valueOf).collect(Collectors.toList());
-		List<MainFeed> frequentCategoryFeeds = mainFeedRepository.findByRestaurant_RestaurantCategory_CategoryNameInOrderByCreatedAtDesc(
-			frequentCategories);
+		List<MainFeed> frequentCategoryFeeds = mainFeedRepository.findByRestaurant_RestaurantCategory_CategoryNameInAndCreatedAtAfterOrderByCreatedAtDesc(
+			frequentCategories, latestFeedTime);
 		candidates.addAll(frequentCategoryFeeds);
 
 		/**
@@ -238,13 +258,47 @@ public class FeedService implements MessageListener {
 		 * 내용(핫한 컨텐츠 + 날씨별 예측) => 코사인 유사도 측정해도 되고... -> elastic (40개)
 		 */
 
-		Page<MainFeedDTO> mainFeed = mainFeedRepository.findByUser_Name(userName, pageable).map(MainFeedDTO::new);
-		List<MainFeedResponseDTO> mainFeedResponseDTO = candidates.stream()
-			.map(MainFeedDTO::new)
+		// TODO 평가 함수
+		// score 평가 => score는 지금은 시간 순으로 지정
+		List<MainFeedDTO> candidateList = new ArrayList<>(candidates).stream().map(MainFeedDTO::new).toList();
+		List<Long> scores = candidateList.stream().map(this::evaluationFunction).toList();
+
+		// FIXME => candiate에 있는 데이터의 경우 어떻게 처리할 것인가?
+		// FIXME => 이 방식이면 중복된 데이터가 있을 수도 있는 데 어떻게 처리할 것인가?
+		// FIXME => 두개 트랜젝션 처리
+		for (int i = 0; i < scores.size(); i++) {
+			String id = candidateList.get(i).getId() + "_" + candidateList.get(i).getCreatedAt().toString();
+			redisTemplate.opsForZSet().add(RECOMMEND_FEED_CACHE_SCORE + userName, id, scores.get(i));
+			redisTemplate.opsForHash().put(RECOMMEND_FEED_CACHE + userName, id, candidateList.get(i));
+		}
+
+		long pageOffset = pageable.getOffset();
+		long pageSize = pageable.getPageSize();
+
+		List<String> feedIds = redisTemplate.opsForZSet()
+			.reverseRange(offsetKey, pageOffset, pageOffset + pageSize - 1)
+			.stream()
 			.filter(Objects::nonNull)
+			.map(String::valueOf)
+			.toList();
+
+		// hashkey -> feedId + " : " + 시간
+		String feedCacheKey = RECOMMEND_FEED_CACHE + userName;
+		List<MainFeedDTO> mainFeeds = redisTemplate.opsForHash().multiGet(feedCacheKey, new ArrayList<>(feedIds))
+			.stream().map(obj -> new ObjectMapper().convertValue(obj, MainFeedDTO.class)).toList();
+
+		List<MainFeedResponseDTO> mainFeedResponseDTO = mainFeeds.stream()
 			.map(new FeedResponseMapper()::ToMainFeedResponseDTO).toList();
 
-		return new CustomPageResponse<>(mainFeedResponseDTO, pageable, mainFeed.getTotalElements());
+		return new CustomPageResponse<>(mainFeedResponseDTO, pageable, feedIds.size());
+
+	}
+
+	/** 평가 함수
+	 * 향후 개인화된 추천 점수 도출
+	 * */
+	public long evaluationFunction(MainFeedDTO mainFeedDTO) {
+		return mainFeedDTO.getCreatedAt().toEpochSecond(ZoneOffset.UTC);
 	}
 
 	public long generateId() {
