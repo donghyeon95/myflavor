@@ -39,25 +39,22 @@ public interface MainFeedRepository extends JpaRepository<MainFeed, Long> {
 	 * */
 	@Query(
 		value = """
-			    WITH RecentAuthors AS (
-			        SELECT DISTINCT mf1.user_id, mf1.created_at
-			        FROM main_feed mf1
-			        JOIN follow f ON mf1.user_id = f.following_id
-			        JOIN user u ON f.follower_id = u.id
-			        WHERE u.name = :username
-			        AND mf1.created_at >= :time
-			        ORDER BY mf1.created_at DESC
-			        LIMIT 1000
-			    ),
-			    RankedPosts AS (
-			        SELECT mf2.id, mf2.created_at, mf2.updated_at, mf2.title, mf2.feed_photo, mf2.visit_method,
-			               mf2.content, mf2.restaurant_pk, mf2.heart_cnt, mf2.user_id,
-			               ROW_NUMBER() OVER (PARTITION BY mf2.user_id ORDER BY mf2.created_at DESC) AS `rank`
-			        FROM main_feed mf2
-			        WHERE mf2.user_id IN (SELECT user_id FROM RecentAuthors)
-			        AND mf2.created_at >= :time
-			    )
-			    SELECT * FROM RankedPosts WHERE `rank` <= 5;
+			   WITH Followees AS (
+			        SELECT follower_id
+			        FROM myflavor.follow f\s
+			           JOIN user as u ON u.id =  f.following_id
+			        WHERE u.name= :username
+			      ),
+			      FilteredFeed AS (
+			        SELECT mf.*,\s
+			               ROW_NUMBER() OVER (PARTITION BY mf.user_id ORDER BY mf.created_at DESC, mf.id DESC) AS rnk
+			        FROM main_feed mf
+			        JOIN Followees f ON mf.user_id = f.follower_id
+			        WHERE mf.created_at > :time
+			      )
+			      SELECT *
+			      FROM FilteredFeed
+			      WHERE rnk <= 5
 			""",
 		nativeQuery = true
 	)
