@@ -1,5 +1,6 @@
 package com.myflavor.myflavor.domain.feed.DTO.db;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,6 +9,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class FeedDTO {
+	@NotBlank(message = "컨텐츠는 필수 입력사항입니다.")
 	private String content;
 	private String picturePath;
 

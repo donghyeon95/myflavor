@@ -13,7 +13,6 @@ import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.listener.adapter.MessageListenerAdapter;
 import org.springframework.data.redis.repository.configuration.EnableRedisRepositories;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
-import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import com.myflavor.myflavor.domain.feed.service.FeedService;
@@ -44,11 +43,12 @@ public class RedisConfig {
 	@Bean
 	public RedisTemplate<?, Object> redisTemplate(RedisConnectionFactory redisConnectionFactory) {
 		RedisTemplate<?, Object> redisTemplate = new RedisTemplate<>();
-		redisTemplate.setConnectionFactory(redisConnectionFactory());   //connection
+		redisTemplate.setConnectionFactory(redisConnectionFactory);   //connection
 		redisTemplate.setKeySerializer(new StringRedisSerializer());    // key
 		// redisTemplate.setValueSerializer(new StringRedisSerializer());  // value
 		redisTemplate.setValueSerializer(new GenericJackson2JsonRedisSerializer());  // value
-		redisTemplate.setDefaultSerializer(RedisSerializer.string());
+		// redisTemplate.setDefaultSerializer(RedisSerializer.string());
+		redisTemplate.setDefaultSerializer(new GenericJackson2JsonRedisSerializer());
 		return redisTemplate;
 	}
 

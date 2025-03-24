@@ -9,8 +9,13 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.myflavor.myflavor.domain.account.model.entity.User;
 import com.myflavor.myflavor.domain.comment.model.entity.Comment;
+import com.myflavor.myflavor.domain.feed.DTO.mapper.LocalDateTimeToStringSerializer;
+import com.myflavor.myflavor.domain.feed.DTO.mapper.StringToLocalDateTimeDeserializer;
 import com.myflavor.myflavor.domain.feed.DTO.service.VisitMethod;
 import com.myflavor.myflavor.domain.heart.model.entity.Heart;
 import com.myflavor.myflavor.domain.restaurant.model.entity.Restaurant;
@@ -48,9 +53,13 @@ public class MainFeed {
 
 	@CreatedDate
 	@Column(updatable = false)
+	@JsonSerialize(using = LocalDateTimeToStringSerializer.class)
+	@JsonDeserialize(using = StringToLocalDateTimeDeserializer.class)
 	private LocalDateTime createdAt;
 
 	@LastModifiedDate
+	@JsonSerialize(using = LocalDateTimeToStringSerializer.class)
+	@JsonDeserialize(using = StringToLocalDateTimeDeserializer.class)
 	private LocalDateTime updatedAt;
 
 	@Valid
@@ -81,12 +90,15 @@ public class MainFeed {
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@ToString.Exclude
+	@JsonIgnore
 	private User user;
 
 	@OneToMany(mappedBy = "mainFeed", cascade = CascadeType.ALL, orphanRemoval = true)
+	@JsonIgnore
 	private List<SubFeed> subFeeds;
 
 	@OneToMany(mappedBy = "mainFeed", cascade = CascadeType.ALL, orphanRemoval = true)
+	@JsonIgnore
 	private List<Comment> comments;
 
 	@Override
