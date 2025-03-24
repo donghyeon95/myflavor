@@ -15,7 +15,6 @@ public class FeedSetting {
 	private Map<SettingKey, String> settings = new HashMap<>();
 
 	public FeedSetting() {
-		System.out.println("feedKEySDKLfj");
 		this.settings = new HashMap<>();
 		for (SettingKey s : SettingKey.values()) {
 			this.settings.put(s, s.getDefaultValue());

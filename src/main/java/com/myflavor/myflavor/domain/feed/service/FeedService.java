@@ -164,18 +164,18 @@ public class FeedService implements MessageListener {
 		if (preWriterScore == null)
 			preWriterScore = 0.0;
 
-		// 🔥 새로운 점수 계산 (자주 본 항목 + 최근 본 항목 반영)
+		// 새로운 점수 계산 (자주 본 항목 + 최근 본 항목 반영)
 		double newCategoryScore = (preCategoryScore * 0.9) + (currentTime / 1000000.0);
 		double newWriterScore = (preWriterScore * 0.9) + (currentTime / 1000000.0);
 
 		// 피드 본 내역 로그 저장
 		// 스코어는 이전에 있는 값을 가져와서 + 현재 시간을 더한다. => 자주 검색 + 최근에 검색
-		// 🔥 카테고리 점수 업데이트 (전체 ZSET에 반영)
+		// 카테고리 점수 업데이트 (전체 ZSET에 반영)
 		redisTemplate.opsForZSet()
 			.add(redisCategoryKey, mainFeed.getRestaurant().getRestaurantCategory().getCategoryName(),
 				newCategoryScore);
 
-		// 🔥 유저 점수 업데이트 (전체 ZSET에 반영)
+		// 유저 점수 업데이트 (전체 ZSET에 반영)
 		redisTemplate.opsForZSet().add(redisWriterKey, mainFeed.getUser().getName(), newWriterScore);
 
 		return new FeedResponseDTO(new MainFeedDTO(mainFeed));
@@ -194,16 +194,6 @@ public class FeedService implements MessageListener {
 		 *  cache miss 일 경우 => 기본 로직 (1주일 이후)
 		 *  cache hit 일 경우 => 캐시 시간 이후
 		 * */
-
-		// FEED CACHE MANAGER
-
-		// FEED DATA 가져오는 거
-
-		// FEED 후보군 관리 (this  클래스에서 구현>? )
-
-		// FEED 평가 함수
-
-		// FEED FILTER
 		LocalDateTime latestFeedTime = feedCachManagerService.getLatestCacheTime(userName);
 
 		// FIXME 만약에 시간이 1분 아래라면 db 안가도 될듯.
@@ -218,7 +208,11 @@ public class FeedService implements MessageListener {
 		long pageOffset = pageable.getOffset();
 		long pageSize = pageable.getPageSize();
 		List<String> feedIds = feedCachManagerService.getFeedIds(userName, pageOffset, pageSize);
-		List<MainFeedDTO> mainFeeds = feedCachManagerService.getMainFeedsFromIds(userName, feedIds, MainFeedDTO.class);
+		// TODO  필터 함수
+		List<MainFeedDTO> mainFeeds = feedCachManagerService.getMainFeedsFromIds(userName, feedIds, MainFeedDTO.class)
+			.stream()
+			.filter(this::filterFeedFunction)
+			.toList();
 
 		List<MainFeedResponseDTO> mainFeedResponseDTO = mainFeeds.stream()
 			.map(new FeedResponseMapper()::ToMainFeedResponseDTO).toList();
@@ -232,6 +226,18 @@ public class FeedService implements MessageListener {
 	 * */
 	public long evaluationFunction(MainFeedDTO mainFeedDTO) {
 		return mainFeedDTO.getCreatedAt().toEpochSecond(ZoneOffset.UTC);
+	}
+
+	/**
+	 * 필터 함수
+	 * @return
+	 */
+	public boolean filterFeedFunction(MainFeedDTO mainFeedDTO) {
+		// 유저 설정 정보
+		// 비공개 여부 등
+		// 유해 게시글 여부
+
+		return true;
 	}
 
 	public long generateId() {
