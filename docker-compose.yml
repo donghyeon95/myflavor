@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - C:\picture:/app/picture
+        - .:/home/gradle/project
+    working_dir: /home/gradle/project
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+      - WSL_HOST_IP=${WSL_HOST_IP}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - SEOUL_API_KEY=${SEOUL_API_KEY}
+      - ES_USER=${ES_USER}
+      - ES_PASS=${ES_PASS}

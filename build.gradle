@@ -34,6 +34,18 @@ dependencies {
     implementation 'org.apache.httpcomponents:httpclient:4.5.7'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    // JUnit 5 (Jupiter)
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+
+    // Mockito 기본
+    testImplementation 'org.mockito:mockito-core:5.11.0'
+
+    // Mockito + JUnit5 연동
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.11.0'
+
+    // Mockito BDD 스타일 지원 (given, then 등)
+    testImplementation 'org.mockito:mockito-inline:5.2.0'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
 
@@ -52,4 +64,14 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    jvmArgs "-Dfile.encoding=UTF-8", "-Duser.home=C:/picture" // gradle 경로 한글 깨짐 문제
+}
+
+bootJar {
+    archiveFileName = 'app.jar'
+}
+
+jar {
+    archiveBaseName.set('app')
+    archiveVersion.set('')
 }
