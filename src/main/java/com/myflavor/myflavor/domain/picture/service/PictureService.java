@@ -144,7 +144,6 @@ public class PictureService implements MessageListener {
 			throw new IllegalArgumentException("Path is nessesary");
 
 		try {
-
 			Files.delete(path);
 			System.out.println("File deleted successfully: " + path);
 
@@ -193,15 +192,16 @@ public class PictureService implements MessageListener {
 
 	@Override
 	public void onMessage(Message message, byte[] pattern) {
+
 		String redisKey = message.toString();
-		String path = redisKey.replace(this.REDIS_PICUTURE_KEY_PREFIX, "");
-
-		System.out.println("path: " + path);
-
-		// FIXME 의존성 수정
-		String user = extractFourthLastElementFromPath(path);
-
 		if (redisKey.startsWith(this.REDIS_PICUTURE_KEY_PREFIX)) {
+			String path = redisKey.replace(this.REDIS_PICUTURE_KEY_PREFIX, "");
+
+			System.out.println("path: " + path);
+
+			// FIXME 의존성 수정
+			String user = extractFourthLastElementFromPath(path);
+
 			try {
 				deleteFile(Paths.get(path));
 			} catch (IllegalAccessException e) {

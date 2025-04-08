@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.myflavor.myflavor.domain.feed.model.entity.MainFeed;
 import com.myflavor.myflavor.domain.feed.model.entity.SubFeed;
@@ -58,7 +59,7 @@ public interface MainFeedRepository extends JpaRepository<MainFeed, Long> {
 			""",
 		nativeQuery = true
 	)
-	List<MainFeed> queryByUserFollower(String username, LocalDateTime time);
+	List<MainFeed> queryByUserFollower(@Param("username") String username, @Param("time") LocalDateTime time);
 
 	/**
 	 * 특정 유저를 기준으로 그들이 쓴 최신 글 쿼리

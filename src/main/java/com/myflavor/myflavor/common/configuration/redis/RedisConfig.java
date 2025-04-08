@@ -1,5 +1,6 @@
 package com.myflavor.myflavor.common.configuration.redis;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.data.redis.RedisProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,6 +16,7 @@ import org.springframework.data.redis.repository.configuration.EnableRedisReposi
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
+import com.myflavor.myflavor.domain.feed.service.FeedCachManagerService;
 import com.myflavor.myflavor.domain.feed.service.FeedService;
 import com.myflavor.myflavor.domain.picture.service.PictureService;
 
@@ -32,12 +34,12 @@ public class RedisConfig {
 	}
 
 	// ER
-	@Bean
-	public RedisTemplate<?, Object> defaultRedisTemplate(RedisConnectionFactory redisConnectionFactory) {
-		RedisTemplate<?, Object> redisTemplate = new RedisTemplate<>();
-		redisTemplate.setConnectionFactory(redisConnectionFactory());
-		return redisTemplate;
-	}
+	// @Bean
+	// public RedisTemplate<?, Object> defaultRedisTemplate(RedisConnectionFactory redisConnectionFactory) {
+	// 	RedisTemplate<?, Object> redisTemplate = new RedisTemplate<>();
+	// 	redisTemplate.setConnectionFactory(redisConnectionFactory());
+	// 	return redisTemplate;
+	// }
 
 	// Redis template
 	@Bean
@@ -45,7 +47,9 @@ public class RedisConfig {
 		RedisTemplate<?, Object> redisTemplate = new RedisTemplate<>();
 		redisTemplate.setConnectionFactory(redisConnectionFactory);   //connection
 		redisTemplate.setKeySerializer(new StringRedisSerializer());    // key
-		// redisTemplate.setValueSerializer(new StringRedisSerializer());  // value
+		// redisTemplate.setValueSerializer(new StringRedisSerializer());
+		redisTemplate.setHashKeySerializer(new StringRedisSerializer()); // !!value
+		redisTemplate.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
 		redisTemplate.setValueSerializer(new GenericJackson2JsonRedisSerializer());  // value
 		// redisTemplate.setDefaultSerializer(RedisSerializer.string());
 		redisTemplate.setDefaultSerializer(new GenericJackson2JsonRedisSerializer());
@@ -54,8 +58,9 @@ public class RedisConfig {
 
 	@Bean
 	public RedisMessageListenerContainer messageListenerContainer(RedisConnectionFactory redisConnectionFactory,
-		MessageListenerAdapter feedListenerAdapter,
-		MessageListenerAdapter pictureListenerAdapter) {
+		@Qualifier("feedListenerAdapter") MessageListenerAdapter feedListenerAdapter,
+		@Qualifier("pictureListenerAdapter") MessageListenerAdapter pictureListenerAdapter,
+		@Qualifier("feedCacheListenerAdapter") MessageListenerAdapter feedCacheListenerAdapter) {
 
 		RedisMessageListenerContainer container = new RedisMessageListenerContainer();
 		container.setConnectionFactory(redisConnectionFactory);
@@ -63,6 +68,7 @@ public class RedisConfig {
 		// 여러 토픽일 경우 계속해서 등록하도록.
 		container.addMessageListener(feedListenerAdapter, new PatternTopic("__keyevent@0__:expired"));
 		container.addMessageListener(pictureListenerAdapter, new PatternTopic("__keyevent@0__:expired"));
+		container.addMessageListener(feedCacheListenerAdapter, new PatternTopic("__keyevent@0__:expired"));
 		return container;
 	}
 
@@ -74,6 +80,11 @@ public class RedisConfig {
 	@Bean
 	public MessageListenerAdapter pictureListenerAdapter(@Lazy PictureService pictureService) {
 		return new MessageListenerAdapter(pictureService, "onMessage"); // handleMessage로 안되나?
+	}
+
+	@Bean
+	public MessageListenerAdapter feedCacheListenerAdapter(@Lazy FeedCachManagerService feedCachManagerService) {
+		return new MessageListenerAdapter(feedCachManagerService, "onMessage");
 	}
 
 }

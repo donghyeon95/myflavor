@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -37,8 +38,8 @@ public class Restaurant {
 	@JoinColumn(name = "restaurant_category_id", unique = false)
 	private RestaurantCategory restaurantCategory;
 
-	// @Version
-	// private Long version;
+	@Version
+	private Long version;
 }
 
 

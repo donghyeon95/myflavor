@@ -9,7 +9,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
@@ -21,7 +20,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.myflavor.myflavor.common.configuration.UID.snowflakeId.SnowFlakeIdProvider;
 import com.myflavor.myflavor.domain.account.model.entity.User;
 import com.myflavor.myflavor.domain.account.model.repository.UserRepository;
-import com.myflavor.myflavor.domain.comment.model.repository.CommentRepository;
 import com.myflavor.myflavor.domain.feed.DTO.db.FeedDTO;
 import com.myflavor.myflavor.domain.feed.DTO.db.MainFeedDTO;
 import com.myflavor.myflavor.domain.feed.DTO.mapper.FeedMapper;
@@ -33,10 +31,7 @@ import com.myflavor.myflavor.domain.feed.DTO.response.MainFeedResponseDTO;
 import com.myflavor.myflavor.domain.feed.model.entity.FeedConfigration;
 import com.myflavor.myflavor.domain.feed.model.entity.MainFeed;
 import com.myflavor.myflavor.domain.feed.model.entity.SubFeed;
-import com.myflavor.myflavor.domain.feed.model.repository.FeedConfigurationRepository;
 import com.myflavor.myflavor.domain.feed.model.repository.MainFeedRepository;
-import com.myflavor.myflavor.domain.feed.model.repository.SubFeedRepository;
-import com.myflavor.myflavor.domain.heart.model.repository.HeartRepository;
 import com.myflavor.myflavor.domain.picture.service.PictureService;
 import com.myflavor.myflavor.domain.restaurant.model.entity.Restaurant;
 import com.myflavor.myflavor.domain.restaurant.model.repository.RestaurantRepository;
@@ -48,21 +43,12 @@ public class FeedService implements MessageListener {
 	private final String FEED_BACKUP_KEY_PREFIX = "backupFeed:";
 	private final String USER_FEED_KEY_PREFIX = "user:";
 	private final String USER_FEED_VIEW_LOG = "user:feed_view:";
-	private final String RECOMMEND_FEED_CACHE_SCORE = "user:feed_cache_score:";
-	private final String RECOMMEND_FEED_CACHE = "user:feed_cache:";
 	private MainFeedRepository mainFeedRepository;
-	private SubFeedRepository subFeedRepository;
-	private CommentRepository commentRepository;
-	private FeedConfigurationRepository feedConfigurationRepository;
-	private HeartRepository heartRepository;
 	private RedisTemplate<String, Object> redisTemplate;
 	private SnowFlakeIdProvider snowFlakeIdProvider;
-	private ObjectMapper objectMapper;
-	@Autowired
+
 	private PictureService pictureService;
-	@Autowired
 	private UserRepository userRepository;
-	@Autowired
 	private RestaurantRepository restaurantRepository;
 	private FeedCandidateService feedCandidateService;
 	private FeedCachManagerService feedCachManagerService;
@@ -71,22 +57,20 @@ public class FeedService implements MessageListener {
 	private final double hot_weight = 0.8;
 	private final double time_weight = 0.2;
 
-	public FeedService(MainFeedRepository mainFeedRepository, SubFeedRepository subFeedRepository,
-		CommentRepository commentRepository,
-		FeedConfigurationRepository feedConfigurationRepository, HeartRepository heartRepository,
+	public FeedService(MainFeedRepository mainFeedRepository,
 		RedisTemplate<String, Object> redisTemplate, SnowFlakeIdProvider snowFlakeIdProvider,
-		ObjectMapper objectMapper, FeedCandidateService feedCandidateService,
-		FeedCachManagerService feedCachManagerService) {
+		FeedCandidateService feedCandidateService,
+		FeedCachManagerService feedCachManagerService,
+		PictureService pictureService, UserRepository userRepository,
+		RestaurantRepository restaurantRepository) {
 		this.mainFeedRepository = mainFeedRepository;
-		this.subFeedRepository = subFeedRepository;
-		this.commentRepository = commentRepository;
-		this.feedConfigurationRepository = feedConfigurationRepository;
-		this.heartRepository = heartRepository;
 		this.redisTemplate = redisTemplate;
 		this.snowFlakeIdProvider = snowFlakeIdProvider;
-		this.objectMapper = objectMapper;
 		this.feedCandidateService = feedCandidateService;
 		this.feedCachManagerService = feedCachManagerService;
+		this.pictureService = pictureService;
+		this.userRepository = userRepository;
+		this.restaurantRepository = restaurantRepository;
 	}
 
 	// FIXME  userNmae이 아니라 userVO나 User 객체를 받도록 수정.
@@ -106,6 +90,8 @@ public class FeedService implements MessageListener {
 		// FeedHTTPVO => MainFeed, SubFeed 데이터 변경
 		MainFeed mainFeed = mainFeedRepository.findById(feedId).orElse(null);
 
+		// FIXME 사진 삭제 로직은 배치로 처리하는 것이 좋을 듯 (여기서 하기에 불필요한 로직)
+		// picture 사진 폳더 구조 중에서 2개가 있는 데이터를 삭제
 		if (mainFeed != null) {
 			pictureService.deleteFile(mainFeed.getFeedPhoto(), userName);
 
@@ -208,6 +194,7 @@ public class FeedService implements MessageListener {
 		long pageOffset = pageable.getOffset();
 		long pageSize = pageable.getPageSize();
 		List<String> feedIds = feedCachManagerService.getFeedIds(userName, pageOffset, pageSize);
+
 		// TODO  필터 함수
 		List<MainFeedDTO> mainFeeds = feedCachManagerService.getMainFeedsFromIds(userName, feedIds, MainFeedDTO.class)
 			.stream()
@@ -215,6 +202,7 @@ public class FeedService implements MessageListener {
 			.toList();
 
 		List<MainFeedResponseDTO> mainFeedResponseDTO = mainFeeds.stream()
+			.filter(Objects::nonNull)
 			.map(new FeedResponseMapper()::ToMainFeedResponseDTO).toList();
 
 		return new CustomPageResponse<>(mainFeedResponseDTO, pageable, feedIds.size());
@@ -282,10 +270,7 @@ public class FeedService implements MessageListener {
 
 	@Override
 	public void onMessage(Message message, byte[] pattern) {
-		System.out.println("Message: " + message);
 		String expiredKey = message.toString();
-		System.out.println("expiredKey: " + expiredKey);
-
 		if (expiredKey.startsWith(this.FEED_KEY_PREFIX)) {
 			try {
 				this.handleFeedExpiration(expiredKey);
