@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.myflavor.myflavor.domain.feed.DTO.db.MainFeedDTO;
+import com.myflavor.myflavor.domain.feed.model.repository.MainFeedRepository;
 
 /**
  * FEED 조회 Cache을 관리하는 서비스
@@ -40,9 +41,11 @@ public class FeedCachManagerService implements MessageListener {
 	private final String RECOMMEND_FEED_COOL_CACHE_SCORE = "user:feed_cool_cache_score:";
 
 	private final RedisTemplate<String, Object> redisTemplate;
+	private final MainFeedRepository mainFeedRepository;
 
-	public FeedCachManagerService(RedisTemplate<String, Object> redisTemplate) {
+	public FeedCachManagerService(RedisTemplate<String, Object> redisTemplate, MainFeedRepository mainFeedRepository) {
 		this.redisTemplate = redisTemplate;
+		this.mainFeedRepository = mainFeedRepository;
 	}
 
 	/**
@@ -78,11 +81,7 @@ public class FeedCachManagerService implements MessageListener {
 		// hot Cache에 대한 10분 TTL
 		// 이렇게 일괄적으로 적용하게 되면 => 계속 요청이 오는 경우에는 hot 캐시가 삭제가 안되는 경우가 생김
 		// 개별 적용을 해줘야 할 수도 있다.
-		redisTemplate.opsForValue()
-			.set(this.RECOMMEND_FEED_TTL_CACHE + userName, "temp", Duration.ofMinutes(10));
 
-		//FIXME 세번이 지나고도 실패한 로직은 어떻게 할 것인가?
-		// 지금은 무시하는 것으로.
 	}
 
 	/**
@@ -112,12 +111,16 @@ public class FeedCachManagerService implements MessageListener {
 			try {
 				saveFeedScoreToCache(scoreCacheKey, id, score, connection);
 				saveFeedToCache(feedCacheKey, id, candidate, connection);
+
 			} catch (JsonProcessingException e) {
 				throw new RuntimeException(e);
 			}
 
 			return connection.exec();
 		});
+
+		redisTemplate.opsForValue()
+			.set(this.RECOMMEND_FEED_TTL_CACHE + userName + ":" + id, "temp", Duration.ofSeconds(60));
 
 		return results != null && !results.isEmpty();
 	}
@@ -160,24 +163,35 @@ public class FeedCachManagerService implements MessageListener {
 	 * scan을 활용하여 => 최근 시간 확인
 	 */
 	public LocalDateTime getLatestCacheTime(String userName) {
-		// cache 키
-		String offsetKey = RECOMMEND_FEED_CACHE_SCORE + userName;
+		String hotKey = RECOMMEND_FEED_CACHE_SCORE + userName;
+		String coolKey = RECOMMEND_FEED_COOL_CACHE_SCORE + userName;
 
+		LocalDateTime hotLatest = getLatestFromZSet(hotKey);
+		LocalDateTime coolLatest = getLatestFromZSet(coolKey);
+
+		return hotLatest.isAfter(coolLatest) ? hotLatest : coolLatest;
+	}
+
+	private LocalDateTime getLatestFromZSet(String key) {
 		Cursor<ZSetOperations.TypedTuple<Object>> cursor = redisTemplate.opsForZSet()
-			.scan(offsetKey, ScanOptions.scanOptions().match("*").count(1000).build());
+			.scan(key, ScanOptions.scanOptions().match("*").count(1000).build());
 
 		return StreamSupport.stream(cursor.spliterator(), false)
 			.map(ZSetOperations.TypedTuple::getValue)
 			.filter(Objects::nonNull)
 			.map(Object::toString)
-			.map(key -> {
-				String dateTimeStr = String.valueOf(key).split("_")[1]; // "2025-03-14T22:39:58.671588"
-				return LocalDateTime.parse(dateTimeStr); // String -> LocalDateTime 변환
+			.map(id -> {
+				try {
+					return LocalDateTime.parse(id.split("_")[1]);
+				} catch (Exception e) {
+					return null;
+				}
 			})
+			.filter(Objects::nonNull)
 			.map(time -> time.toEpochSecond(ZoneOffset.UTC))
 			.max(Long::compareTo)
 			.map(epoch -> LocalDateTime.ofEpochSecond(epoch, 0, ZoneOffset.UTC))
-			.orElse(LocalDateTime.now().minusDays(50)); //TODO 7일로 변경 필요
+			.orElse(LocalDateTime.now().minusDays(50));
 	}
 
 	/**
@@ -188,13 +202,13 @@ public class FeedCachManagerService implements MessageListener {
 		// Redis HOT-CACEH에서 삭제 TTL이 오게 되면 이전에 Redis에 있던 데이터 삭제
 		try {
 			String expiredKey = message.toString();
-			System.out.println("feedCache: " + expiredKey);
 
 			if (expiredKey.startsWith(RECOMMEND_FEED_TTL_CACHE)) {
-				String userName = expiredKey.substring(RECOMMEND_FEED_TTL_CACHE.length());
+				String userName = expiredKey.substring(RECOMMEND_FEED_TTL_CACHE.length()).split(":")[0];
+				String id = expiredKey.substring((RECOMMEND_FEED_TTL_CACHE + userName + ":").length());
 
 				try {
-					redisTemplate.delete(RECOMMEND_FEED_CACHE + userName);
+					redisTemplate.opsForHash().delete(RECOMMEND_FEED_CACHE + userName, id);
 				} catch (Exception e) {
 					System.err.println("⚠️ Hash delete error: " + e.getMessage());
 				}
@@ -220,7 +234,7 @@ public class FeedCachManagerService implements MessageListener {
 				}
 
 				try {
-					redisTemplate.delete(RECOMMEND_FEED_CACHE_SCORE + userName);
+					redisTemplate.opsForZSet().remove(RECOMMEND_FEED_CACHE_SCORE + userName, id);
 				} catch (Exception e) {
 					System.err.println("⚠️ Score delete error: " + e.getMessage());
 				}
@@ -237,10 +251,10 @@ public class FeedCachManagerService implements MessageListener {
 
 	/**
 	 * 캐시에 저장된 feedId offset 조회
+	 * hot -> cool 확인
 	 */
-	public List<String> getFeedIds(String userName, long pageOffset, long pageSize) {
+	public List<String> getFeedIdsFromHotCache(String userName, long pageOffset, long pageSize) {
 		// cache 키
-
 		String offsetKey = getScoreCacheKey(userName);
 
 		return redisTemplate.opsForZSet()
@@ -250,6 +264,50 @@ public class FeedCachManagerService implements MessageListener {
 			.map(Object::toString)
 			.map(String::valueOf)
 			.toList();
+	}
+
+	public List<String> getFeedIdsFromCoolCache(String userName, long pageOffset, long pageSize) {
+		System.out.println("coolCache");
+		String offsetKey = getScoreCoolCacheKey(userName);
+
+		//  withScores로 한번에 가져오기
+		Set<ZSetOperations.TypedTuple<Object>> tuples = redisTemplate.opsForZSet()
+			.reverseRangeWithScores(offsetKey, pageOffset, pageOffset + pageSize - 1);
+
+		if (tuples == null || tuples.isEmpty())
+			return Collections.emptyList();
+
+		// 파싱 및 정제
+		List<String> rawIds = new ArrayList<>();
+		List<String> feedOnlyIds = new ArrayList<>();
+		List<Long> scores = new ArrayList<>();
+
+		for (ZSetOperations.TypedTuple<Object> tuple : tuples) {
+			if (tuple == null || tuple.getValue() == null || tuple.getScore() == null)
+				continue;
+
+			String rawId = tuple.getValue().toString();
+			String feedId = rawId.split("_")[0];
+			Long score = tuple.getScore().longValue();
+
+			rawIds.add(rawId);
+			feedOnlyIds.add(feedId);
+			scores.add(score);
+		}
+
+		// DB에서 조회
+		List<MainFeedDTO> feeds = mainFeedRepository.findMainFeedByIds(feedOnlyIds).stream()
+			.map(MainFeedDTO::new)
+			.toList();
+
+		// 핫 캐시에 저장
+		saveBulkFeedCache(userName, feeds, scores);
+
+		// 쿨 캐시에서 삭제
+		redisTemplate.opsForZSet().remove(offsetKey, rawIds.toArray());
+
+		return rawIds;
+
 	}
 
 	/**
@@ -272,6 +330,10 @@ public class FeedCachManagerService implements MessageListener {
 
 	private String getScoreCacheKey(String userName) {
 		return RECOMMEND_FEED_CACHE_SCORE + userName;
+	}
+
+	private String getScoreCoolCacheKey(String userName) {
+		return RECOMMEND_FEED_COOL_CACHE_SCORE + userName;
 	}
 
 }

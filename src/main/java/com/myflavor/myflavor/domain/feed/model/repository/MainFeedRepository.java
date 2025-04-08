@@ -29,6 +29,17 @@ public interface MainFeedRepository extends JpaRepository<MainFeed, Long> {
 	Optional<MainFeed> findByIdToMainFeedDTO(long id);
 
 	@Query(
+		value =
+			"SELECT DISTINCT mf " +
+				"FROM MainFeed mf " +
+				"LEFT JOIN FETCH mf.restaurant r " +
+				"LEFT JOIN fetch mf.subFeeds sf " +
+				"LEFT JOIN FETCH  mf.user u " +
+				"WHERE mf.id IN :feedKeys"
+	)
+	List<MainFeed> findMainFeedByIds(@Param("feedKeys") List<String> feedKeys);
+
+	@Query(
 		value = "SELECT m " +
 			"FROM MainFeed m " +
 			"WHERE :subFeed MEMBER OF m.subFeeds"

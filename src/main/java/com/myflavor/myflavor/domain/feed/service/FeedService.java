@@ -180,20 +180,26 @@ public class FeedService implements MessageListener {
 		 *  cache miss 일 경우 => 기본 로직 (1주일 이후)
 		 *  cache hit 일 경우 => 캐시 시간 이후
 		 * */
-		LocalDateTime latestFeedTime = feedCachManagerService.getLatestCacheTime(userName);
-
-		// FIXME 만약에 시간이 1분 아래라면 db 안가도 될듯.
-		Set<MainFeed> candidates = feedCandidateService.getCandidates(userName, latestFeedTime);
-
-		// TODO 평가 함수
-		// score 평가 => score는 지금은 시간 순으로 지정
-		List<MainFeedDTO> candidateList = new ArrayList<>(candidates).stream().map(MainFeedDTO::new).toList();
-		List<Long> scores = candidateList.stream().map(this::evaluationFunction).toList();
-		feedCachManagerService.saveBulkFeedCache(userName, candidateList, scores);
-
 		long pageOffset = pageable.getOffset();
 		long pageSize = pageable.getPageSize();
-		List<String> feedIds = feedCachManagerService.getFeedIds(userName, pageOffset, pageSize);
+		if (pageOffset == 0) {
+			LocalDateTime latestFeedTime = feedCachManagerService.getLatestCacheTime(userName);
+
+			// FIXME 만약에 시간이 1분 아래라면 db 안가도 될듯.
+			Set<MainFeed> candidates = feedCandidateService.getCandidates(userName, latestFeedTime);
+
+			// TODO 평가 함수
+			// score 평가 => score는 지금은 시간 순으로 지정
+			List<MainFeedDTO> candidateList = new ArrayList<>(candidates).stream().map(MainFeedDTO::new).toList();
+			List<Long> scores = candidateList.stream().map(this::evaluationFunction).toList();
+			feedCachManagerService.saveBulkFeedCache(userName, candidateList, scores);
+		}
+
+		List<String> feedIds = feedCachManagerService.getFeedIdsFromHotCache(userName, pageOffset, pageSize);
+
+		if (feedIds == null || feedIds.isEmpty()) {
+			feedIds = feedCachManagerService.getFeedIdsFromCoolCache(userName, 0, pageSize);
+		}
 
 		// TODO  필터 함수
 		List<MainFeedDTO> mainFeeds = feedCachManagerService.getMainFeedsFromIds(userName, feedIds, MainFeedDTO.class)
